@@ -21,17 +21,18 @@
 
 #include "Utils.h"
 
-#define ARG_EXIST_CHECK(Name, Arg)                                             \
-  {                                                                            \
-    struct stat Buffer;                                                        \
-    if (stat(Arg, &Buffer)) {                                                  \
-      fprintf(stderr, "%s not found\n", Arg);                                  \
-      return 1;                                                                \
-    }                                                                          \
-  }                                                                            \
+#define ARG_EXIST_CHECK(Name, Arg)            \
+  {                                           \
+    struct stat Buffer;                       \
+    if (stat(Arg, &Buffer))                   \
+    {                                         \
+      fprintf(stderr, "%s not found\n", Arg); \
+      return 1;                               \
+    }                                         \
+  }                                           \
   std::string Name(Arg);
 
-#define DBG                                                                    \
+#define DBG \
   std::cout << "Hit F::" << __FILE__ << " ::L" << __LINE__ << std::endl
 
 /**
@@ -51,7 +52,8 @@ typedef std::string MutationFn(std::string);
  * @param Input        parent input used for generating input for this run.
  * @param MutatedInput input string for this run.
  */
-struct RunInfo {
+struct RunInfo
+{
   bool Passed;
   MutationFn *Mutation;
   std::string Input, MutatedInput;
@@ -100,13 +102,14 @@ int StrategyState = 0;
  * @param RunInfo struct with information about the previous run.
  * @return Pointer to a string.
  */
-std::string selectInput(RunInfo Info) {
+std::string selectInput(RunInfo Info)
+{
   int Index = 0;
   return SeedInputs[Index];
 }
 
 /*********************************************/
-/*       Implement mutation startegies       */
+/*       Implement mutation strategies       */
 /*********************************************/
 
 const char ALPHA[] = "abcdefghijklmnopqrstuvwxyz\n\0";
@@ -132,7 +135,8 @@ std::string mutationA(std::string Original) { return Original; }
  * @param Original Original input string.
  * @return std::string mutated string.
  */
-std::string mutationB(std::string Original) {
+std::string mutationB(std::string Original)
+{
   if (Original.length() <= 0)
     return Original;
 
@@ -150,13 +154,76 @@ std::string mutationB(std::string Original) {
  */
 
 /**
+ * @brief Swap two adjacent bytes in the string at random
+ *
+ * @param original Original input string.
+ * @return std::string mutated string.
+ */
+std::string swapAdjacentBytes(std::string original)
+{
+  if (original.length() <= 1)
+    return original;
+
+  int index = rand() % (original.length() - 1);
+  std::swap(original[index], original[index + 1]);
+  return original;
+}
+
+/**
+ * @brief Increment a random byte in the string.
+ *
+ * @param original Original input string.
+ * @return std::string mutated string.
+ */
+std::string incrementByte(std::string original)
+{
+  if (original.length() <= 0)
+    return original;
+
+  int index = rand() % original.length();
+  original[index] = (original[index] + 1) % 256;
+  return original;
+}
+
+/**
+ * @brief Remove random byte from the string.
+ *
+ * @param original Original input string.
+ * @return std::string mutated string.
+ */
+std::string removeByte(std::string original)
+{
+  if (original.length() <= 0)
+    return original;
+
+  int index = rand() % original.length();
+  original.erase(index, 1);
+  return original;
+}
+
+/**
+ * @brief Add random byte to the string.
+ *
+ * @param original Original input string.
+ * @return std::string mutated string.
+ */
+
+std::string addByte(std::string original)
+{
+  int index = rand() % (original.length() + 1);
+  char newByte = rand() % 256;
+  original.insert(index, 1, newByte);
+  return original;
+}
+
+/**
  * @brief Vector containing all the available mutation functions
  *
  * TODO: Update the definition to include any mutations you implement.
  * For example if you implement mutationC then update it to be:
  * std::vector<MutationFn *> MutationFns = {mutationA, mutationB, mutationC};
  */
-std::vector<MutationFn *> MutationFns = {mutationA, mutationB};
+std::vector<MutationFn *> MutationFns = {mutationA, mutationB, swapAdjacentBytes, incrementByte, removeByte, addByte};
 
 /**
  * @brief Select a mutation function to apply to the seed input.
@@ -169,10 +236,11 @@ std::vector<MutationFn *> MutationFns = {mutationA, mutationB};
  * @param RunInfo struct with information about the current run.
  * @returns a pointer to a MutationFn
  */
-MutationFn *selectMutationFn(RunInfo &Info) {
-  int Strat = rand() % MutationFns.size();
-
-  return MutationFns[Strat];
+// Select a mutation function based on their scores
+MutationFn *selectMutationFn(RunInfo &Info)
+{
+  auto int strategy = rand() % MutationFns.size();
+  return MutationFns[strategy];
 }
 
 /*********************************************/
@@ -184,11 +252,27 @@ MutationFn *selectMutationFn(RunInfo &Info) {
  * @param Target name of target binary
  * @param Info RunInfo
  */
-void feedBack(std::string &Target, RunInfo &Info) {
+void feedBack(std::string &Target, RunInfo &Info)
+{
   std::vector<std::string> RawCoverageData;
   readCoverageFile(Target, RawCoverageData);
 
   PrevCoverageState = CoverageState;
+
+  bool newCoverage = false;
+
+  // Check if there is new coverage
+  for (const auto &line : RawCoverageData)
+  {
+    if (std::find(PrevCoverageState.begin(), PrevCoverageState.end(), line) == PrevCoverageState.end())
+    {
+      // New coverage discovered!
+      fprintf(stderr, "New coverage discovered: %s\n", line.c_str());
+      newCoverage = true;
+      break;
+    }
+  }
+  // Clear the coverage state for the next run
   CoverageState.clear();
 
   /**
@@ -205,31 +289,35 @@ void feedBack(std::string &Target, RunInfo &Info) {
    */
   CoverageState.assign(RawCoverageData.begin(),
                        RawCoverageData.end()); // No extra processing
-
 }
 
 int Freq = 1000;
 int Count = 0;
 int PassCount = 0;
 
-bool test(std::string &Target, std::string &Input, std::string &OutDir) {
+bool test(std::string &Target, std::string &Input, std::string &OutDir)
+{
   // Clean up old coverage file before running
   std::string CoveragePath = Target + ".cov";
   std::remove(CoveragePath.c_str());
 
   ++Count;
   int ReturnCode = runTarget(Target, Input);
-  if (ReturnCode == 127) {
+  if (ReturnCode == 127)
+  {
     fprintf(stderr, "%s not found\n", Target.c_str());
     exit(1);
   }
   fprintf(stderr, "\e[A\rTried %d inputs, %d crashes found\n", Count,
           failureCount);
-  if (ReturnCode == 0) {
+  if (ReturnCode == 0)
+  {
     if (PassCount++ % Freq == 0)
       storePassingInput(Input, OutDir);
     return true;
-  } else {
+  }
+  else
+  {
     storeCrashingInput(Input, OutDir);
     return false;
   }
@@ -241,9 +329,11 @@ bool test(std::string &Target, std::string &Input, std::string &OutDir) {
  * @param Target Target (instrumented) program binary.
  * @param OutDir Directory to store fuzzing results.
  */
-void fuzz(std::string Target, std::string OutDir) {
+void fuzz(std::string Target, std::string OutDir)
+{
   struct RunInfo Info;
-  while (true) {
+  while (true)
+  {
     std::string Input = selectInput(Info);
     Info = RunInfo();
     Info.Input = Input;
@@ -258,8 +348,10 @@ void fuzz(std::string Target, std::string OutDir) {
  * Usage:
  * ./fuzzer [target] [seed input dir] [output dir] [frequency] [random seed]
  */
-int main(int argc, char **argv) {
-  if (argc < 4) {
+int main(int argc, char **argv)
+{
+  if (argc < 4)
+  {
     printf("usage %s [target] [seed input dir] [output dir] [frequency "
            "(optional)] [seed (optional arg)]\n",
            argv[0]);
@@ -279,7 +371,8 @@ int main(int argc, char **argv) {
   storeSeed(OutDir, RandomSeed);
   initialize(OutDir);
 
-  if (readSeedInputs(SeedInputs, SeedInputDir)) {
+  if (readSeedInputs(SeedInputs, SeedInputDir))
+  {
     fprintf(stderr, "Cannot read seed input directory\n");
     return 1;
   }
