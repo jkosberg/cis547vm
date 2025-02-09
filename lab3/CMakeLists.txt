@@ -9,6 +9,13 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 
 option(USE_REFERENCE "Build with reference solution" OFF)
 
+# Set the build type to Debug
+set(CMAKE_BUILD_TYPE Debug)
+
+# Ensure the appropriate compiler flags are set
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g")
+
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS} include)
 link_directories(${LLVM_LIBRARY_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
