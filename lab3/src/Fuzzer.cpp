@@ -517,26 +517,20 @@ MutationFn *selectMutationFn(RunInfo &Info)
     return MutationFns[randomIndex];
   }
 
-  // Select a mutation function based on their scores
-  int totalScore = std::accumulate(MutationScores.begin(), MutationScores.end(), 0);
-
-  if (totalScore == 0)
+  // prioritize exploring mutation functions that led to crash or new coverage
+  // randomly select function from one that has already scored
+  std::vector<int> scoredMutationIndices;
+  for (size_t i = 0; i < MutationScores.size(); ++i)
   {
-    return MutationFns.front(); // Return a default mutation function if all scores are zero
-  }
-
-  // Generate a random number between 0 and totalScore - 1
-  int randomScore = rand() % totalScore;
-  int cumulativeScore = 0;
-
-  // Iterate through the mutation functions and select one based on their scores
-  for (size_t i = 0; i < MutationFns.size(); ++i)
-  {
-    cumulativeScore += MutationScores[i];
-    if (randomScore < cumulativeScore)
+    if (MutationScores[i] > 1)
     {
-      return MutationFns[i];
+      scoredMutationIndices.push_back(i);
     }
+  }
+  if (scoredMutationIndices.size() > 0)
+  {
+    int randomIndex = rand() % scoredMutationIndices.size();
+    return MutationFns[scoredMutationIndices[randomIndex]];
   }
 
   return MutationFns.back(); // Fallback in case of rounding errors
