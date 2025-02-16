@@ -1,0 +1,29 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "delta-debugger",
+            "args": [
+                "./test3",
+                "tmp",
+            ]
+        },
+        {
+            "name": "Python Debugger: delta_debugger",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/delta_debugger/__main__.py",
+            "console": "integratedTerminal",
+            "args": [
+                "./test/test3",
+                "test/tmp",
+            ],
+        }
+    ]
+}

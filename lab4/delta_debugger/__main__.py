@@ -16,31 +16,31 @@ def exist_check(file):
     return 0
 
 
-def main() -> int:
-    if len(argv) < 3:
-        print(f"usage: {argv[0]} [target] [crashing input file]")
+def main(*args) -> int:
+    if len(args) < 2:
+        print(f"usage: {sys.argv[0]} [target] [crashing input file]")
         return 1
-    target, input_file = argv[1], argv[2]
+    target, input_file = args[0], args[1]
     if not Path(target).exists():
-        print(f"{target} not found", sys.stderr)
+        print(f"{target} not found", file=sys.stderr)
         return 1
     if not Path(input_file).exists():
-        print(f"{input_file} not found", sys.stderr)
+        print(f"{input_file} not found", file=sys.stderr)
         return 1
 
     with open(input_file, "rb") as fp:
-        input = fp.read()
-        if not run_target(target=target, input=input):
+        file_input = fp.read()
+        if not run_target(target=target, input=file_input):
             print(
                 "Sanity check failed: the program does not crash with the initial input",
                 file=sys.stderr,
             )
             return 1
 
-    delta_debugging_result = delta_debug(target=target, input=input)
+    delta_debugging_result = delta_debug(target=target, program_input=file_input)
 
     print(
-        f"Original Input Size: {len(input)}",
+        f"Original Input Size: {len(file_input)}",
         f"Minimized Input Size: {len(delta_debugging_result)}",
         sep="\n",
     )
