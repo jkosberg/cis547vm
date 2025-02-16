@@ -21,57 +21,59 @@ def delta_debug(target: str, program_input: bytes) -> bytes:
     :param input: crashing input to be minimized
     :return: 1-minimal crashing input.
     """
-    def next_input(program_input: list, n: int) -> Generator[Tuple[bytes, int], None, int]:
+
+    def delta_debugging(input_data: list, test_function: callable) -> list:
         """
-        Returns the next input and n to try.
+        Implements the delta debugging algorithm to minimize the input data that causes a failure.
 
-        :param target: target program
-        :param input: crashing input to be minimized
-        :param n: number of partitions
-        :return: next input and n to try.
+        :param input_data: The input data to be minimized.
+        :param test_function: A function that returns True if the input data causes a failure, False otherwise.
+        :return: The minimized input data that still causes the failure.
         """
-        # partition input
-        partition = math.ceil(len(program_input) / n)
-        # yield each partition
-        for i in range(0, len(program_input), partition):
-            yield program_input[i:i + partition], partition
-
-    def minimize_input(target: str, input_data: list, partition_count: int) -> list:
-        """
-        Recursively minimize the input data.
-
-        :param target: target program to invoke 
-        :param input_data: crashing input to be minimized
-        :param partition_count: number of partitions
-        :return: minimized input data
-        """
-        # Check if the empty string causes a crash for early termination
-        if run_target(target, EMPTY_STRING) != 0:
-            return list(EMPTY_STRING)
-
-        while partition_count <= len(input_data):
-            found_crash = False
-            partitions = list(next_input(input_data, partition_count))
-            for i in range(len(partitions)):
-                # Remove the i-th partition
-                reduced_input = input_data[:partitions[i][1]] + input_data[partitions[i][1] + len(partitions[i][0]):]
-                if run_target(target, bytes(reduced_input)) != 0:
-                    # If the reduced input causes a crash, treat it as the current configuration
-                    input_data = reduced_input
-                    partition_count = 2  # Restart with 2 partitions
-                    found_crash = True
-                    break
-
-            if not found_crash:
-                # If no crashes are found, increase the partition count
-                partition_count *= 2
+        # early return with base case if empty string causes failure (aka program just always fails)
+        if test_function(EMPTY_STRING):
+            return EMPTY_STRING
         
+        def dd_helper(data: list, n: int) -> list:
+            """
+            Helper function for delta debugging.
+            :param data: The input data to be minimized.
+            :param n: The number of partitions to divide the data into.
+            :return: The minimized input data that still causes the failure.
+            """
+            # base case where we can't partition further
+            if n > len(data):
+                return data
+            
+            # partition data into n chunks
+            chunk_size = len(data) // n
+            for i in range(n):
+                # Create a chunk of the original data
+                chunk = data[i * chunk_size:(i + 1) * chunk_size]
+                # Create the rest of the data without the current chunk
+                rest = data[:i * chunk_size] + data[(i + 1) * chunk_size:]
 
-        return reduced_input
+                # If the rest of the data still causes a failure, recurse with the rest
+                if test_function(rest):
+                    return dd_helper(rest, 2)
+                # If the current chunk causes a failure, recurse with the chunk
+                if test_function(chunk):
+                    return dd_helper(chunk, 2)
+
+            # If no smaller input causes a failure, recurse with the original data
+            if n < len(data):
+                return dd_helper(data, min(len(data), 2 * n))
+            return data
+
+        # Start the delta debugging process with the initial input data and partition size of 2
+        return dd_helper(input_data, 2)
+    
+    def test_function(input_data: list) -> bool: 
+        """Function to test if the input data causes a failure."""
+        return run_target(target, bytes(input_data)) != 0
 
     # convert data to a list so it can be partitioned
     input_data = list(program_input)
-    # start with 2 partitions (basic binary search)
-    minimized_input = minimize_input(target, input_data, 2)
+    minimized_input = delta_debugging(input_data, test_function)
     # return back to bytes for caller
     return bytes(minimized_input)
