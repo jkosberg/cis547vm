@@ -45,23 +45,29 @@ def delta_debug(target: str, program_input: bytes) -> bytes:
         :param partition_count: number of partitions
         :return: minimized input data
         """
+        # Check if the empty string causes a crash for early termination
+        if run_target(target, EMPTY_STRING) != 0:
+            return list(EMPTY_STRING)
+
         while partition_count <= len(input_data):
             found_crash = False
-            for part, partition in next_input(input_data, partition_count):
-                # convert input back to bytes
-                part = bytes(part)
-                if run_target(target, part) != 0:
-                    # recursively minimize the crashing partition
-                    input_data = list(part)
-                    input_data = minimize_input(target, input_data, 2)
+            partitions = list(next_input(input_data, partition_count))
+            for i in range(len(partitions)):
+                # Remove the i-th partition
+                reduced_input = input_data[:partitions[i][1]] + input_data[partitions[i][1] + len(partitions[i][0]):]
+                if run_target(target, bytes(reduced_input)) != 0:
+                    # If the reduced input causes a crash, treat it as the current configuration
+                    input_data = reduced_input
+                    partition_count = 2  # Restart with 2 partitions
                     found_crash = True
                     break
 
             if not found_crash:
-                # If no crashes are found, we might have found a minimal input
-                # but we need to check if we can minimize further 
-                partition_count += 1
-        return input_data
+                # If no crashes are found, increase the partition count
+                partition_count *= 2
+        
+
+        return reduced_input
 
     # convert data to a list so it can be partitioned
     input_data = list(program_input)
