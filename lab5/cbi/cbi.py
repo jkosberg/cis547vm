@@ -44,15 +44,23 @@ def collect_observations(log: CBILog) -> Dict[Predicate, ObservationStatus]:
             value=valid_predicate.value,
         )
 
+        previous_observation = observations.get(predicate, ObservationStatus.NEVER)
+        new_observation = ObservationStatus.NEVER
+
+        if valid_predicate.value:
+            new_observation = ObservationStatus.ONLY_TRUE
+        else:
+            new_observation = ObservationStatus.ONLY_FALSE
+
+        if previous_observation != new_observation:
+            observations[predicate] = ObservationStatus.merge(
+                previous_observation, new_observation
+            )
+        # We also have to mark all the alternatives as observed
         for type, status in PredicateType.alternatives(valid_predicate.value):
             new_predicate = copy.deepcopy(predicate)
             new_predicate.pred_type = type
-            old_status = observations.get(new_predicate, status)
-            new_status = ObservationStatus.merge(
-                old_status,
-                status,
-            )
-            observations[new_predicate] = new_status
+            observations[new_predicate] = status
     return observations
 
 
