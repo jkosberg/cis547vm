@@ -12,6 +12,7 @@ from cbi.data_format import (
     PredicateType,
     Report,
 )
+import copy
 from cbi.utils import get_logs
 
 
@@ -36,8 +37,22 @@ def collect_observations(log: CBILog) -> Dict[Predicate, ObservationStatus]:
 
     Hint: The PredicateType.alternatives will come in handy.
     """
+    for valid_predicate in log:
+        predicate = Predicate(
+            line=valid_predicate.line,
+            column=valid_predicate.column,
+            value=valid_predicate.value,
+        )
 
-
+        for type, status in PredicateType.alternatives(valid_predicate.value):
+            new_predicate = copy.deepcopy(predicate)
+            new_predicate.pred_type = type
+            old_status = observations.get(new_predicate, status)
+            new_status = ObservationStatus.merge(
+                old_status,
+                status,
+            )
+            observations[new_predicate] = new_status
     return observations
 
 
@@ -48,13 +63,35 @@ def collect_all_predicates(logs: Iterable[CBILog]) -> Set[Predicate]:
     :param logs: Collection of CBILogs
     :return: Set of all predicates found across all logs.
     """
-    predicates = set()
+    predicates: set[Predicate] = set()
 
-    # TODO: Add your code here
-
-
+    for input_logs in logs:
+        # Each log will have a list of predicates
+        for valid_predicate in input_logs:
+            # Log will look something like: {"kind": "branch", "line": 5, "column": 7, "value": true}
+            predicates.add(
+                Predicate(
+                    line=valid_predicate.line,
+                    column=valid_predicate.column,
+                    value=valid_predicate.value,
+                )
+            )
     return predicates
 
+def find_closest_predicate_info(predicate: Predicate, predicate_infos: Dict[Predicate, PredicateInfo]) -> PredicateInfo:
+    """
+    Find the closest predicate info for a given predicate.
+    This is used to handle the case where the predicate is not found in the
+    predicate_infos dictionary.
+    :param predicate: the predicate to find
+    :param predicate_infos: the predicate infos dictionary
+    :return: the closest predicate info
+    """
+    if predicate not in predicate_infos:
+        for p in predicate_infos.keys():
+            if p.line == predicate.line and p.column == predicate.column:
+                return predicate_infos[p]
+    return predicate_infos[predicate]
 
 def cbi(success_logs: List[CBILog], failure_logs: List[CBILog]) -> Report:
     """
@@ -72,7 +109,50 @@ def cbi(success_logs: List[CBILog], failure_logs: List[CBILog]) -> Report:
 
     # TODO: Add your code here to compute the information for each predicate.
 
+        # Get all successes and failures and update them
+    for log in success_logs:
+        # Populate the base information for each predicate
+        for pred in log:
+            predicate = Predicate(line=pred.line, column=pred.column, value=pred.value)
+            predicate_info: PredicateInfo = predicate_infos[predicate]
+            predicate_info.num_true_in_success += 1
+        
+        # Now we can populate information from the observations
+        observations = collect_observations(log)
+        for predicate, observation in observations.items():
+            predicate_info = predicate_infos.get(predicate, PredicateInfo(predicate))
+            # now we increment number observed in failure/success for each predicate
+            if observation == ObservationStatus.ONLY_TRUE:
+                predicate_info.num_observed_in_success += 1
+            if observation == ObservationStatus.ONLY_FALSE:
+                predicate_info.num_observed_in_success += 1
+            if observation == ObservationStatus.BOTH:
+                predicate_info.num_observed_in_success += 1
+                predicate_info.num_observed_in_failure += 1
+            predicate_infos[predicate] = predicate_info
+            
 
+                            
+    for log in failure_logs:
+        # Populate the base information for each predicate
+        for pred in log:
+            predicate = Predicate(line=pred.line, column=pred.column, value=pred.value)
+            predicate_info = predicate_infos[predicate]
+            predicate_info.num_true_in_failure += 1
+        
+        # Now we can populate information from the observations
+        observations = collect_observations(log)
+        for predicate, observation in observations.items():
+            predicate_info = predicate_infos.get(predicate, PredicateInfo(predicate))
+            # now we increment number observed in failure/success for each predicate
+            if observation == ObservationStatus.ONLY_TRUE:
+                predicate_info.num_observed_in_failure += 1
+            if observation == ObservationStatus.ONLY_FALSE:
+                predicate_info.num_observed_in_failure += 1
+            if observation == ObservationStatus.BOTH:
+                predicate_info.num_observed_in_failure += 1
+                predicate_info.num_observed_in_success += 1
+            predicate_infos[predicate] = predicate_info
 
     # Finally, create a report and return it.
     report = Report(predicate_info_list=list(predicate_infos.values()))

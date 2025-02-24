@@ -86,7 +86,10 @@ def get_log_data_for_dir(
             with log_save_location.open("r") as fp:
                 # Parse all lines in the log file and add them to the log_data
                 log_data.append(
-                    [CBILogEntry(**json.loads(log_entry)) for log_entry in fp.readlines()]
+                    [
+                        CBILogEntry(**json.loads(log_entry))
+                        for log_entry in fp.readlines()
+                    ]
                 )
     return log_data
 
