@@ -69,6 +69,11 @@ namespace dataflow
       {
         return new Domain(Domain::Zero);
       }
+      else if (LHS->isZero() || RHS->isZero())
+      {
+        // If one operand is zero, the result can be non-zero
+        return new Domain(Domain::NonZero);
+      }
       // Otherwise, the result can be any value
       return new Domain(Domain::MaybeZero);
 
