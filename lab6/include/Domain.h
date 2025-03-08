@@ -5,32 +5,44 @@
 
 using namespace llvm;
 
-namespace dataflow {
+namespace dataflow
+{
 
-//===----------------------------------------------------------------------===//
-// Abstract Domain Implementation
-//===----------------------------------------------------------------------===//
+  //===----------------------------------------------------------------------===//
+  // Abstract Domain Implementation
+  //===----------------------------------------------------------------------===//
 
-/*
- * Implement your abstract domain.
- */
-class Domain {
-public:
-  enum Element { Uninit, NonZero, Zero, MaybeZero };
-  Domain();
-  Domain(Element V);
-  Element Value;
+  /*
+   * Implement your abstract domain.
+   */
+  class Domain
+  {
+  public:
+    enum Element
+    {
+      Uninit,
+      NonZero,
+      Zero,
+      MaybeZero
+    };
+    Domain();
+    Domain(Element V);
+    Element Value;
 
-  static Domain *add(Domain *E1, Domain *E2);
-  static Domain *sub(Domain *E1, Domain *E2);
-  static Domain *mul(Domain *E1, Domain *E2);
-  static Domain *div(Domain *E1, Domain *E2);
-  static Domain *join(Domain *E1, Domain *E2);
-  static bool equal(Domain E1, Domain E2);
-  void print(raw_ostream &O);
-};
+    static Domain *add(Domain *E1, Domain *E2);
+    static Domain *sub(Domain *E1, Domain *E2);
+    static Domain *mul(Domain *E1, Domain *E2);
+    static Domain *div(Domain *E1, Domain *E2);
+    static Domain *join(Domain *E1, Domain *E2);
+    static bool equal(Domain E1, Domain E2);
+    void print(raw_ostream &O);
+    bool isZero() const
+    {
+      return Value == Zero;
+    }
+  };
 
-raw_ostream &operator<<(raw_ostream &O, Domain V);
+  raw_ostream &operator<<(raw_ostream &O, Domain V);
 
 } // namespace dataflow
 
