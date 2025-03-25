@@ -142,6 +142,9 @@ namespace dataflow
       *InMem = *JoinedMem;
       delete JoinedMem;
     }
+
+    // Update InMap with the value of InMem
+    InMap[Inst] = new Memory(*InMem);
   }
 
   /**
@@ -284,11 +287,8 @@ namespace dataflow
       Memory *InMem = new Memory();
       flowIn(Inst, InMem);
 
-      // Update InMap with the value of InMem
-      InMap[Inst] = new Memory(*InMem);
-
       // Evaluate the instruction using transfer and create the OutMemory
-      Memory *OutMem = new Memory();
+      Memory *OutMem = new Memory(*InMem);
       transfer(Inst, InMem, *OutMem, PA, PointerSet);
 
       // Use flowOut along with the previous Out memory and the current Out memory

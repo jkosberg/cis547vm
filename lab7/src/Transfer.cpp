@@ -251,34 +251,37 @@ namespace dataflow
        * Hint: You may find getOperand(), getValueOperand(), and getPointerOperand() useful.
        */
       // Get the value operand and pointer operand of the store instruction
-      // Get the value operand and pointer operand of the store instruction
       Value *ValueOperand = Store->getValueOperand();
       Value *PointerOperand = Store->getPointerOperand();
 
       // Get the abstract value of the value operand
       Domain *ValueDomain = getOrExtract(In, ValueOperand);
 
+      // Convert llvm::Value* to std::string for the pointer operand
+      std::string PointerOperandStr = variable(PointerOperand);
+
+      // Update the memory map for the current assignment with the value domain
+      NOut[PointerOperandStr] = ValueDomain;
+
       // Iterate through the provided PointerSet
       for (auto Ptr : PointerSet)
       {
-        // Convert llvm::Value* to std::string
-        std::string PointerOperandStr = variable(PointerOperand);
+        // Convert llvm::Value* to std::string for the current pointer in the set
         std::string PtrStr = variable(Ptr);
 
         // Check if there is a may-alias between the pointer operand and the current pointer in the set
         if (PA->alias(PointerOperandStr, PtrStr))
         {
+          // TODO comments say to do this... but shouldn't it just always be the
+          // value domain?
           // Get the abstract value of the current pointer in the set
           Domain *PtrDomain = getOrExtract(In, Ptr);
 
           // Join the abstract values
           Domain *JoinedDomain = Domain::join(ValueDomain, PtrDomain);
 
-          // Update the memory map for the current assignment with the joined abstract value
-          NOut[PointerOperandStr] = JoinedDomain;
-
           // Update the memory map for all may-alias assignments with the joined abstract value
-          NOut[PtrStr] = JoinedDomain;
+          NOut[PtrStr] = ValueDomain;
         }
       }
     }
