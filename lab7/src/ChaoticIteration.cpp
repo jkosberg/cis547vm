@@ -224,7 +224,18 @@ namespace dataflow
      * If the OutMap changed then also update the WorkSet.
      */
     // Merge abstract domain from pre-transfer memory and post-transfer memory
-    Memory *JoinedMem = join(Pre, Post);
+
+    Memory *JoinedMem;
+
+    // If instruction was store, just set to post
+    if (isa<StoreInst>(Inst))
+    {
+      JoinedMem = new Memory(*Post);
+    }
+    else
+    {
+      JoinedMem = join(Pre, Post);
+    }
 
     // Check if the OutMap has changed
     if (!equal(OutMap[Inst], JoinedMem))
@@ -238,6 +249,10 @@ namespace dataflow
       {
         WorkSet.insert(Succ);
       }
+    }
+    else
+    {
+      delete JoinedMem;
     }
   }
 
