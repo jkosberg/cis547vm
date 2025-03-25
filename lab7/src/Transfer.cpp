@@ -254,6 +254,12 @@ namespace dataflow
       Value *ValueOperand = Store->getValueOperand();
       Value *PointerOperand = Store->getPointerOperand();
 
+      // Check if the value operand is a pointer type (ex: a = &b)
+      if (ValueOperand->getType()->isPointerTy())
+      {
+        // Skip processing for this store instruction
+        return;
+      }
       // Get the abstract value of the value operand
       Domain *ValueDomain = getOrExtract(In, ValueOperand);
 
