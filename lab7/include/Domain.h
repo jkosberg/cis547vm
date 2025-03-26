@@ -40,6 +40,10 @@ namespace dataflow
     {
       return Value == Zero;
     }
+    bool isUninit() const
+    {
+      return Value == Uninit;
+    }
   };
 
   raw_ostream &operator<<(raw_ostream &O, Domain V);

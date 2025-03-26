@@ -230,8 +230,15 @@ namespace dataflow
     // Check if the OutMap has changed
     if (!equal(OutMap[Inst], JoinedMem))
     {
-      // Update the OutMap
-      OutMap[Inst] = JoinedMem;
+      if (isa<StoreInst>(Inst) || isa<LoadInst>(Inst))
+      {
+        auto newMem = new Memory(*Post);
+        OutMap[Inst] = newMem;
+      }
+      else
+      {
+        OutMap[Inst] = JoinedMem;
+      }
 
       // Add all successors to WorkSet
       std::vector<Instruction *> Successors = getSuccessors(Inst);
