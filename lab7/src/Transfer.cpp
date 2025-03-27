@@ -251,51 +251,43 @@ namespace dataflow
        * Hint: You may find getOperand(), getValueOperand(), and getPointerOperand() useful.
        */
       // Get the value operand and pointer operand of the store instruction
-      // Get the value operand and pointer operand of the store instruction
       Value *ValueOperand = Store->getValueOperand();
       Value *PointerOperand = Store->getPointerOperand();
 
-      // Check if the value operand is a constant integer
-      if (auto *ConstInt = dyn_cast<ConstantInt>(ValueOperand))
+      // Get the domain of the value operand
+      Domain *ValueDomain = getOrExtract(In, ValueOperand);
+
+      // Propagate the domain of the value operand to aliases of the pointer operand
+      std::string PointerOperandStr = variable(PointerOperand);
+
+      // If the value operand is a pointer, propagate its domain to its aliases
+      if (ValueOperand->getType()->isPointerTy())
       {
-        // Set the domain based on the constant integer value
-        if (ConstInt->isZero())
+        std::string ValueOperandStr = variable(ValueOperand);
+
+        for (auto Ptr : PointerSet)
         {
-          NOut[variable(PointerOperand)] = new Domain(Domain::Zero);
-        }
-        else
-        {
-          NOut[variable(PointerOperand)] = new Domain(Domain::NonZero);
+          std::string PtrStr = variable(Ptr);
+
+          // Check if the ValueOperand is an alias of Ptr
+          if (PA->alias(ValueOperandStr, PtrStr))
+          {
+            // Update the memory map for the alias
+            NOut[PtrStr] = ValueDomain;
+          }
         }
       }
       else
       {
-        // Get the abstract value of the value operand
-        Domain *ValueDomain = getOrExtract(In, ValueOperand);
-
-        // Convert llvm::Value* to std::string for the pointer operand
-        std::string PointerOperandStr = variable(PointerOperand);
-
-        // Update the memory map for the current assignment with the value domain
-        NOut[PointerOperandStr] = ValueDomain;
-
-        // Iterate through the provided PointerSet
         for (auto Ptr : PointerSet)
         {
-          // Convert llvm::Value* to std::string for the current pointer in the set
           std::string PtrStr = variable(Ptr);
 
-          // Check if there is a may-alias between the pointer operand and the current pointer in the set
-          if (PA->alias(PointerOperandStr, PtrStr) && PointerOperandStr != PtrStr)
+          // Check if the PointerOperand is an alias of Ptr
+          if (PA->alias(PointerOperandStr, PtrStr))
           {
-            // Get the abstract value of the current pointer in the set
-            Domain *PtrDomain = getOrExtract(In, Ptr);
-
-            // Join the abstract values
-            Domain *JoinedDomain = Domain::join(ValueDomain, PtrDomain);
-
-            // Update the memory map for all may-alias assignments with the joined abstract value
-            NOut[PtrStr] = JoinedDomain;
+            // Update the memory map for the alias with the domain of the value operand
+            NOut[PtrStr] = ValueDomain;
           }
         }
       }
