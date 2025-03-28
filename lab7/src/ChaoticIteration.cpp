@@ -282,9 +282,9 @@ namespace dataflow
       for (auto &Instruction : BasicBlock)
       {
         WorkSet.insert(&Instruction);
-        if (auto *Pointer = dyn_cast<Value>(&Instruction))
+        if (Instruction.getType()->isPointerTy())
         {
-          PointerSet.insert(Pointer);
+          PointerSet.insert(&Instruction);
         }
       }
     }

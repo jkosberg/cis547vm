@@ -250,6 +250,7 @@ namespace dataflow
        *
        * Hint: You may find getOperand(), getValueOperand(), and getPointerOperand() useful.
        */
+
       // Value operand is the value being stored
       Value *ValueOperand = Store->getValueOperand();
       auto ValueOperandType = ValueOperand->getType();
@@ -263,37 +264,85 @@ namespace dataflow
 
       std::string PointerOperandStr = variable(PointerOperand);
       std::string ValueOperandStr = variable(ValueOperand);
+      // 4 cases to consider:
+      // 1: Value operand and pointer operand are both pointers
+      // 2: Value operand is a pointer, pointer operand is not
+      // 3: Value operand is not a pointer, pointer operand is
+      // 4: Value operand and pointer operand are not pointers
 
       // If the value operand is a pointer, we need to check the domain of what it points to
       if (ValueOperandType->isPointerTy())
       {
-        for (auto Ptr : PointerSet)
+        if (PointerOperandType->isPointerTy())
         {
-          auto PtrString = variable(Ptr);
-          if (PA->alias(ValueOperandStr, PtrString))
+          for (auto Ptr : PointerSet)
           {
-            // Get the abstract value of the pointer operand
-            auto AliasDomain = getOrExtract(In, Ptr);
+            auto PtrString = variable(Ptr);
+            if (PA->alias(ValueOperandStr, PtrString))
+            {
+              // Get the abstract value of the pointer operand
+              auto AliasDomain = getOrExtract(In, Ptr);
 
-            // Update the memory map for the alias with the domain of the value operand
-            NOut[PtrString] = Domain::join(ValueDomain, AliasDomain);
+              // Update the memory map for the alias with the domain of the value operand
+              NOut[PtrString] = Domain::join(ValueDomain, AliasDomain);
+            }
           }
+          NOut[PointerOperandStr] = ValueDomain;
+        }
+        else if (PointerOperandType->isIntegerTy())
+        {
+          // If the pointer operand is an integer type, it simply represents
+          // the value of the variable so the abstract domain is the same as the
+          // value operand
+          // Example instruction: store i32 %2, i32* %1, align 4
+          NOut[PointerOperandStr] = ValueDomain;
+        }
+        else
+        {
+          // errs() << "Pointer Operand: " << PointerOperandStr << "\n";
+          // errs() << "Value Operand: " << ValueOperandStr << "\n";
         }
       }
       else
       {
         // If we get here, value being stored is not a pointer, but memory location storing it could be
         // First check if the pointer operand has any aliases
-        for (auto Ptr : PointerSet)
+        if (PointerOperandType->isPointerTy())
         {
-          auto PtrString = variable(Ptr);
-          if (PA->alias(PointerOperandStr, PtrString))
+          if (ValueOperandType->isIntegerTy())
           {
-            // Get the abstract value of the pointer operand
-            auto AliasDomain = getOrExtract(In, Ptr);
+            // If the value operand is an integer type, join it with the previous domain
+            // Example instruction: store i32 0, i32* %1, align 4
+            for (auto Ptr : PointerSet)
+            {
+              auto PtrString = variable(Ptr);
+              if (PA->alias(PointerOperandStr, PtrString))
+              {
+                // Get the abstract value of the pointer operand
+                auto AliasDomain = getOrExtract(In, Ptr);
 
-            // Update the memory map for the alias with the domain of the value operand
-            NOut[PtrString] = Domain::join(ValueDomain, PointerDomain);
+                // Update the memory map for the alias with the domain of the value operand
+                NOut[PtrString] = Domain::join(ValueDomain, AliasDomain);
+              }
+            }
+            NOut[PointerOperandStr] = ValueDomain;
+          }
+          else
+          {
+            for (auto Ptr : PointerSet)
+            {
+              auto PtrString = variable(Ptr);
+              if (PA->alias(PointerOperandStr, PtrString))
+              {
+                // errs() << "Pointer Operand: " << PointerOperandStr << "\n";
+                // errs() << "Value Operand: " << ValueOperandStr << "\n";
+                // Get the abstract value of the pointer operand
+                auto AliasDomain = getOrExtract(In, Ptr);
+
+                // Update the memory map for the alias with the domain of the value operand
+                NOut[PtrString] = ValueDomain;
+              }
+            }
           }
         }
       }
