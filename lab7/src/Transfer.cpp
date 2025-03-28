@@ -307,18 +307,53 @@ namespace dataflow
        */
       // Get the pointer operand of the load instruction
       Value *PointerOperand = Load->getPointerOperand();
-
-      // Check if the memory map already contains the variable
-      auto it = In->find(variable(PointerOperand));
-      if (it != In->end())
+      auto PointerOperandType = PointerOperand->getType();
+      if (PointerOperandType->isPointerTy())
       {
-        // Propagate the existing abstract value to NOut
-        NOut[variable(Load)] = it->second;
+        // either *i32 or **i32
+        auto PointerType = PointerOperandType->getPointerElementType();
+        if (PointerType->isIntegerTy())
+        {
+          // If the pointer operand is an integer type, it simply represents
+          // the value of the variable so the abstract domain is the same as the
+          // value operand
+          // Example instruction: %2 = load i32, i32* %1, align 4
+          NOut[variable(Load)] = getOrExtract(In, PointerOperand);
+        }
+        else if (PointerType->isPointerTy())
+        {
+          // If the pointer operand is a pointer type, then we need to find out what it points
+          // to and use that domain
+          // Example instruction: %2 = load i32*, i32** %1, align 4
+          for (auto Ptr : PointerSet)
+          {
+            auto PtrString = variable(PointerOperand);
+            auto PointerOperandString = variable(PointerOperand);
+
+            // Check if the PointerOperand is an alias of Ptr
+            if (PA->alias(PointerOperandString, PtrString))
+            {
+              // Get the abstract value of the pointer operand
+              // Update the memory map for the alias with the domain of the value operand
+              NOut[variable(Load)] = getOrExtract(In, Ptr);
+            }
+          }
+        }
       }
       else
       {
-        // Initialize the memory map for the new variable
-        NOut[variable(Load)] = new Domain(Domain::Uninit);
+        // Check if the memory map already contains the variable
+        auto it = In->find(variable(PointerOperand));
+        if (it != In->end())
+        {
+          // Propagate the existing abstract value to NOut
+          NOut[variable(Load)] = it->second;
+        }
+        else
+        {
+          // Initialize the memory map for the new variable
+          NOut[variable(Load)] = new Domain(Domain::Uninit);
+        }
       }
     }
     else if (auto Branch = dyn_cast<BranchInst>(Inst))
