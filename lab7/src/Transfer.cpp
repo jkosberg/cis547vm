@@ -250,44 +250,50 @@ namespace dataflow
        *
        * Hint: You may find getOperand(), getValueOperand(), and getPointerOperand() useful.
        */
-      // Get the value operand and pointer operand of the store instruction
+      // Value operand is the value being stored
       Value *ValueOperand = Store->getValueOperand();
+      auto ValueOperandType = ValueOperand->getType();
+      // Pointer operand is the location where the value is stored
       Value *PointerOperand = Store->getPointerOperand();
+      auto PointerOperandType = PointerOperand->getType();
 
-      // Get the domain of the value operand
+      // Get the domain of the value operand, aka domain of the value being stored
       Domain *ValueDomain = getOrExtract(In, ValueOperand);
+      Domain *PointerDomain = getOrExtract(In, PointerOperand);
 
-      // Propagate the domain of the value operand to aliases of the pointer operand
       std::string PointerOperandStr = variable(PointerOperand);
+      std::string ValueOperandStr = variable(ValueOperand);
 
-      // If the value operand is a pointer, propagate its domain to its aliases
-      if (ValueOperand->getType()->isPointerTy())
+      // If the value operand is a pointer, we need to check the domain of what it points to
+      if (ValueOperandType->isPointerTy())
       {
-        std::string ValueOperandStr = variable(ValueOperand);
-
         for (auto Ptr : PointerSet)
         {
-          std::string PtrStr = variable(Ptr);
-
-          // Check if the ValueOperand is an alias of Ptr
-          if (PA->alias(ValueOperandStr, PtrStr))
+          auto PtrString = variable(Ptr);
+          if (PA->alias(ValueOperandStr, PtrString))
           {
-            // Update the memory map for the alias
-            NOut[PtrStr] = ValueDomain;
+            // Get the abstract value of the pointer operand
+            auto AliasDomain = getOrExtract(In, Ptr);
+
+            // Update the memory map for the alias with the domain of the value operand
+            NOut[PtrString] = Domain::join(ValueDomain, AliasDomain);
           }
         }
       }
       else
       {
+        // If we get here, value being stored is not a pointer, but memory location storing it could be
+        // First check if the pointer operand has any aliases
         for (auto Ptr : PointerSet)
         {
-          std::string PtrStr = variable(Ptr);
-
-          // Check if the PointerOperand is an alias of Ptr
-          if (PA->alias(PointerOperandStr, PtrStr))
+          auto PtrString = variable(Ptr);
+          if (PA->alias(PointerOperandStr, PtrString))
           {
+            // Get the abstract value of the pointer operand
+            auto AliasDomain = getOrExtract(In, Ptr);
+
             // Update the memory map for the alias with the domain of the value operand
-            NOut[PtrStr] = ValueDomain;
+            NOut[PtrString] = Domain::join(ValueDomain, PointerDomain);
           }
         }
       }
