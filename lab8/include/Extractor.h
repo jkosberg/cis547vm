@@ -16,9 +16,11 @@ using namespace llvm;
 using InstMapTy = std::map<Value *, unsigned int>;
 using DefMapTy = std::map<Value *, std::set<Value *>>;
 
-class Extractor {
+class Extractor
+{
 public:
-  Extractor(const std::string OutDir) {
+  Extractor(const std::string OutDir)
+  {
     DefFile.open(OutDir + "/def.facts");
     UseFile.open(OutDir + "/use.facts");
     NextFile.open(OutDir + "/next.facts");
@@ -27,7 +29,8 @@ public:
     DivFile.open(OutDir + "/div.facts");
   }
 
-  ~Extractor() {
+  ~Extractor()
+  {
     DefFile.close();
     UseFile.close();
     NextFile.close();
@@ -45,7 +48,8 @@ public:
 
   void extractConstraints(const InstMapTy &InstMap, Instruction *I);
 
-  void printTuple(std::string Name, Value *V1, Value *V2) {
+  void printTuple(std::string Name, Value *V1, Value *V2)
+  {
     std::cerr << Name << "(\"" << toString(V1) << "\", \"" << toString(V2)
               << "\")" << std::endl;
   }

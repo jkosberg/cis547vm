@@ -19,11 +19,17 @@
 .output out
 
 
+// There exists a function call at intruction inst that reads a tainted input.
 .decl taint(inst: symbol)
+// There exists an immediate data-flow from instruction from to instruction to.
 .decl edge(from: symbol, to: symbol)
+// There exists a transitive tainted data-flow from instruction from to instruction to.
 .decl path(from: symbol, to: symbol)
+// There exists a function call at intruction inst that sanitizes a tainted input.
 .decl sanitizer(inst: symbol)
+// There exists a division operation at instruction inst whose divisor is variable denom.
 .decl div(denom: symbol, inst: symbol)
+// There exists a potential exploitable divide-by-zero error at instruction inst.
 .decl alarm(inst: symbol)
 
 .input taint
@@ -44,3 +50,18 @@ in(inst, def_inst) :- out(prev_inst, def_inst), next(prev_inst, inst).
 
 /* Rules for taint Analysis */
 /* TODO: Add the rules for taint analysis */
+// from defines a variable var and to uses it
+edge(from, to) :- def(var, from), use(var, to).
+
+// Tainted input propagtes to any  instruction with immediate data-flow edge
+taint(to) :- taint(from), edge(from, to).
+
+// Compute transitive tainted data-flow paths
+path(from, to) :- edge(from, to).
+path(from, to) :- path(from, mid), edge(mid, to).
+
+// Stop taint propagation if a sanitizer is applied
+taint(inst) :- edge(from, inst), taint(from), !sanitizer(inst).
+
+// Raise an alarm if a tainted instruction is involved in a division
+alarm(inst) :- taint(inst), div(_, inst).
