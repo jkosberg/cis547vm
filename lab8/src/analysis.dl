@@ -52,11 +52,12 @@ in(inst, def_inst) :- out(prev_inst, def_inst), next(prev_inst, inst).
 /* Rules for taint Analysis */
 /* TODO: Add the rules for taint analysis */
 // from defines a variable var and to uses it
-edge(from, to) :- def(var, from), use(var, to), in(to, from).
 
 path(a, b) :- taint(a), edge(a, b).
 // Block taint propagation if a sanitizer is applied
-path(a, c) :- path(a,b), edge(b, c), !sanitizer(c).
+path(a, c) :- path(a,b), edge(b, c), !sanitizer(b).
+
+edge(from, to) :- def(var, from), use(var, to), in(to, from).
 
 // Raise an alarm if a tainted instruction is involved in a division,
 // that is there is a path from a tainted instruction to the division instruction

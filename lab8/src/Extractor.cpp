@@ -119,11 +119,6 @@ void Extractor::extractConstraints(const InstMapTy &InstMap, Instruction *I)
   }
   else if (CallInst *CI = dyn_cast<CallInst>(I))
   {
-    // Extract facts from CallInst
-    Function *CalledFunc = CI->getCalledFunction();
-    if (!CalledFunc)
-      return; // Skip indirect calls
-
     // Handle special functions: tainted_input and sanitizer
     if (isTaintedInput(CI))
     {
