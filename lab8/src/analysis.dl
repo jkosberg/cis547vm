@@ -1,3 +1,4 @@
+
 .decl def(var: symbol, inst: symbol)
 .decl use(var: symbol, inst: symbol)
 
@@ -53,15 +54,9 @@ in(inst, def_inst) :- out(prev_inst, def_inst), next(prev_inst, inst).
 // from defines a variable var and to uses it
 edge(from, to) :- def(var, from), use(var, to), in(to, from).
 
-// Tainted input propagtes to any instruction with immediate data-flow edge
-taint(to) :- taint(from), edge(from, to).
-
-// Compute transitive tainted data-flow paths
-path(from, to) :- edge(from, to).
-path(from, to) :- path(from, mid), edge(mid, to).
-
-// Stop taint propagation if a sanitizer is applied
-taint(inst) :- edge(from, inst), taint(from), !sanitizer(inst).
+path(a, b) :- taint(a), edge(a, b).
+// Block taint propagation if a sanitizer is applied
+path(a, c) :- path(a,b), edge(b, c), !sanitizer(c).
 
 // Raise an alarm if a tainted instruction is involved in a division,
 // that is there is a path from a tainted instruction to the division instruction
